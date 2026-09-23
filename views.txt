@@ -1,0 +1,58 @@
+===============================
+        view:1
+===============================
+CREATE OR REPLACE VIEW order_features AS
+SELECT
+    oi.order_id,
+    oi.product_id,
+    oi.seller_id,
+    oi.freight_value,
+    oi.price,
+    p.product_category_name,
+    p.product_weight_g
+FROM order_items oi
+LEFT JOIN products p
+    ON oi.product_id = p.product_id;
+
+=====================================
+        view : 2
+=====================================
+create or replace view order_details as
+select
+order_id,
+count(*) as num_of_products,
+count(distinct product_category_name) as num_of_categories,
+sum(price) as total_price,
+avg(price) as avg_price,
+sum(product_weight_g) as total_product_weight,
+count(distinct seller_id) as num_of_sellers,
+sum(freight_value) as total_freight_value
+
+from order_features
+group by order_id;
+
+=====================================================
+                  view: 3
+=====================================================
+create or replace view ml_order_dataset as 
+select 
+o.order_id,
+c.customer_city,
+extract(month from o.order_purchase_timestamp)::integer as purchase_month,
+extract(DOW from o.order_purchase_timestamp):: integer as purchase_day_of_week,
+od.num_of_products,
+od.num_of_sellers,
+od.num_of_categories,
+od.total_price,
+od.total_product_weight,
+case
+    when o.order_estimated_delivery_date < o.order_delivered_customer_date
+	  then 1
+	  else 0
+end
+as delayed
+
+
+from orders o inner join customers c on o.customer_id = c.customer_id 
+inner join order_details od on o.order_id = od.order_id;
+===================================================
